@@ -15,3 +15,6 @@
   -e string
         监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'
 ```
+
+## 运行
+`./goautobuild -d $HOME/goproject/src/jiacrontab/server -e .go`
