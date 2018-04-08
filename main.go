@@ -116,7 +116,7 @@ func start(binName string) {
 
 func main() {
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
-	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：.go,.html,.php ")
+	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&printHelp, "-help", "", "显示帮助信息")
 
 	flag.Parse()
