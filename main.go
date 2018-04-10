@@ -47,7 +47,6 @@ func autobuild() {
 	if time.Now().Sub(buildTime) > intervalTime {
 		buildTime = time.Now()
 		log.Println("[INFO] Start building...")
-		log.Println(watchPath)
 		os.Chdir(watchPath)
 		cmdName := "go"
 
@@ -164,9 +163,20 @@ func main() {
 
 	log.Println("[INFO] watch", watchPath, " file ext", extArr)
 	err = watcher.Add(watchPath)
+
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
 	}
+	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			log.Printf("[TRAC] Directory( %s )\n", path)
+			err := watcher.Add(path)
+			if err != nil {
+				log.Fatalf("[ERROR] Fail to watch directory[ %s ]\n", err)
+			}
+		}
+		return err
+	})
 	autobuild()
 	<-done
 }
