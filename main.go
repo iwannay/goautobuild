@@ -18,7 +18,7 @@ import (
 var (
 	watchPathArg string
 	watchExtsArg string
-	ignore       string
+	ignoreDir    string
 	printHelp    string
 	extMap       = make(map[string]bool, 0)
 	watchPath    string
@@ -126,7 +126,7 @@ func getCurrentDirectory() string {
 func main() {
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
-	flag.StringVar(&ignore, "i", "", "忽略监听的目录")
+	flag.StringVar(&ignoreDir, "i", "", "忽略监听的目录")
 	flag.StringVar(&printHelp, "-help", "", "显示帮助信息")
 
 	flag.Parse()
@@ -176,7 +176,7 @@ func main() {
 	log.Println("[INFO] watch", watchPath, " file ext", extArr)
 	err = watcher.Add(watchPath)
 
-	ignoreDir := filepath.Join(getCurrentDirectory(), ignore)
+	ignoreDir = filepath.Join(getCurrentDirectory(), ignoreDir)
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
 	}
