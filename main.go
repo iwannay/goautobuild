@@ -18,6 +18,7 @@ import (
 var (
 	watchPathArg string
 	watchExtsArg string
+	ignore       string
 	printHelp    string
 	extMap       = make(map[string]bool, 0)
 	watchPath    string
@@ -36,8 +37,8 @@ func checkFile(file string) bool {
 		return true
 	}
 	ext := filepath.Ext(file)
-	_, ok := extMap[ext]
-	return ok
+	return extMap[ext]
+
 }
 
 func autobuild() {
@@ -113,9 +114,19 @@ func start(binName string) {
 	log.Printf("[INFO] %s is running...\n", binName)
 }
 
+func getCurrentDirectory() string {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatalln(err)
+		os.Exit(1)
+	}
+	return strings.Replace(dir, "\\", "/", -1)
+}
+
 func main() {
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
+	flag.StringVar(&ignore, "i", "", "忽略监听的目录")
 	flag.StringVar(&printHelp, "-help", "", "显示帮助信息")
 
 	flag.Parse()
@@ -149,7 +160,8 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if (event.Op&fsnotify.Write == fsnotify.Write) && checkFile(event.Name) {
+
+				if (event.Op&fsnotify.Write == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
 					log.Println("[INFO] modified file:", event.Name)
 
 					go autobuild()
@@ -164,11 +176,13 @@ func main() {
 	log.Println("[INFO] watch", watchPath, " file ext", extArr)
 	err = watcher.Add(watchPath)
 
+	ignoreDir := filepath.Join(getCurrentDirectory(), ignore)
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
 	}
+	fmt.Println("aaa", ignoreDir)
 	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
+		if info.IsDir() && path != ignoreDir {
 			log.Printf("[TRAC] Directory( %s )\n", path)
 			err := watcher.Add(path)
 			if err != nil {
