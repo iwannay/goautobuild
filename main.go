@@ -180,7 +180,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
 	}
-	fmt.Println("aaa", ignoreDir)
 	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() && path != ignoreDir {
 			log.Printf("[TRAC] Directory( %s )\n", path)
