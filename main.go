@@ -161,9 +161,20 @@ func main() {
 			select {
 			case event := <-watcher.Events:
 
-				if (event.Op&fsnotify.Write == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+				if (event.Op == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
 					log.Println("[INFO] modified file:", event.Name)
+					go autobuild()
+				}
 
+				if event.Op == fsnotify.Create && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+					log.Println("[INFO] add file:", event.Name)
+					watcher.Add(event.Name)
+					go autobuild()
+				}
+
+				if event.Op == fsnotify.Remove && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+					log.Println("[INFO] remote file:", event.Name)
+					watcher.Remove(event.Name)
 					go autobuild()
 				}
 
