@@ -23,7 +23,7 @@
 
 ## 运行
 ```sh
-// 将goautobuild 所在路径加入环境变量
+// 将 goautobuild 所在路径加入环境变量
 goautobuild -d $HOME/goproject/src/jiacrontab/server -e .go
 
 ```
