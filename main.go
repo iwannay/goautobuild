@@ -220,7 +220,7 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-
+				log.Println("[INFO] event type:", event.Op, " filename:", event.Name)
 				if (event.Op == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
 					log.Println("[INFO] modified file:", event.Name)
 					go autobuild()
@@ -232,14 +232,14 @@ func main() {
 					go autobuild()
 				}
 
-				if event.Op == fsnotify.Remove && checkFile(event.Name) && filepath.Base(event.Name) != appName {
-					log.Println("[INFO] remote file:", event.Name)
+				if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+					log.Println("[INFO] remove file:", event.Name)
 					watcher.Remove(event.Name)
 					go autobuild()
 				}
 
 			case err := <-watcher.Errors:
-				log.Println("[ERROR] watcher -> %v", err)
+				log.Println("[ERROR] watcher error:", err)
 			}
 		}
 	}()
