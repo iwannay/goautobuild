@@ -50,10 +50,11 @@ func rename(oldpath, newpath string) error {
 	if !os.IsNotExist(err) {
 		if finfo.IsDir() {
 			_, err := os.Stat(newpath)
-			if !os.IsNotExist(err) {
+			if os.IsNotExist(err) {
 				log.Println("[INFO] rename", oldpath, "to", newpath)
 				return os.Rename(oldpath, newpath)
 			}
+			return err
 
 		}
 	}
