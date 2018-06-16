@@ -4,7 +4,8 @@
 监控文件变化，自动编译并运行go程序
 
 ## TODO
-自定义参数运行
+    1.自定义参数运行
+    2.兼容前端资源编译
 
 ## 参数
 ```
@@ -19,6 +20,12 @@
   -novendor
         编译是是否忽略vendor目录
 ```
+## 安装
+    go get -u -v github.com/iwannay/goautobuild
 
 ## 运行
-`./goautobuild -d $HOME/goproject/src/jiacrontab/server -e .go`
+```sh
+// 将 goautobuild 所在路径加入环境变量
+goautobuild -d $HOME/goproject/src/jiacrontab/server -e .go
+
+```
