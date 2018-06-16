@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -19,12 +20,15 @@ var (
 	watchPathArg string
 	watchExtsArg string
 	ignoreDir    string
-	printHelp    string
+	noVendor     bool
+	printHelp    bool
 	extMap       = make(map[string]bool, 0)
 	watchPath    string
 	buildTime    time.Time
 	cmd          *exec.Cmd
 	lock         sync.Mutex
+	vendorDir    string
+	tmpVendorDir string
 )
 
 const (
@@ -41,9 +45,51 @@ func checkFile(file string) bool {
 
 }
 
+func rename(oldpath, newpath string) error {
+	finfo, err := os.Stat(oldpath)
+	if !os.IsNotExist(err) {
+		if finfo.IsDir() {
+			_, err := os.Stat(newpath)
+			if !os.IsNotExist(err) {
+				log.Println("[INFO] rename", oldpath, "to", newpath)
+				return os.Rename(oldpath, newpath)
+			}
+
+		}
+	}
+	return nil
+}
+
+func listenSignal(fn func()) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	for {
+		sign := <-c
+		log.Println("get signal:", sign)
+		if fn != nil {
+			fn()
+		}
+		log.Fatal("trying to exit gracefully...")
+
+	}
+}
+
 func autobuild() {
 	lock.Lock()
-	defer lock.Unlock()
+	defer func() {
+		err := rename(tmpVendorDir, vendorDir)
+		if err != nil {
+			log.Println("[ERROR] rename:", err)
+		}
+		lock.Unlock()
+	}()
+
+	if noVendor {
+		err := rename(vendorDir, tmpVendorDir)
+		if err != nil {
+			log.Println("[ERROR] rename:", err)
+		}
+	}
 
 	if time.Now().Sub(buildTime) > intervalTime {
 		buildTime = time.Now()
@@ -124,17 +170,27 @@ func getCurrentDirectory() string {
 }
 
 func main() {
+	var err error
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDir, "i", "", "忽略监听的目录")
-	flag.StringVar(&printHelp, "-help", "", "显示帮助信息")
-
+	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
+	flag.BoolVar(&noVendor, "novendor", false, "编译是是否忽略vendor目录")
 	flag.Parse()
-	var err error
+
+	if printHelp {
+		flag.Usage()
+		return
+	}
+
 	watchPath, err = filepath.Abs(filepath.Clean(watchPathArg))
 	if err != nil {
 		log.Fatalf("[FATAL] %v", err)
 	}
+
+	vendorDir = filepath.Join(watchPath, "vendor")
+	tmpVendorDir = filepath.Join(watchPath, "_vendor")
+
 	extArr := strings.Split(watchExtsArg, ",")
 
 	if len(extArr) > 0 {
@@ -145,6 +201,10 @@ func main() {
 			}
 		}
 	}
+
+	go listenSignal(func() {
+		rename(tmpVendorDir, vendorDir)
+	})
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
