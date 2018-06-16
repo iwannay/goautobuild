@@ -8,7 +8,7 @@
 
 ## 参数
 ```
--d string
+  -d string
         监听的目录，默认当前目录.eg:/project (default "./")
   -e string
         监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'
@@ -16,8 +16,8 @@
         显示帮助信息
   -i string
         忽略监听的目录
-  -novendor
-        编译是是否忽略vendor目录
+  -novendor string
+        编译时忽略指定的vendor目录
 ```
 ## 安装
     go get -u -v github.com/iwannay/goautobuild

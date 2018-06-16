@@ -20,7 +20,7 @@ var (
 	watchPathArg string
 	watchExtsArg string
 	ignoreDir    string
-	noVendor     bool
+	noVendor     string
 	printHelp    bool
 	extMap       = make(map[string]bool, 0)
 	watchPath    string
@@ -32,7 +32,7 @@ var (
 )
 
 const (
-	intervalTime = 2 * time.Second
+	intervalTime = 3 * time.Second
 	appName      = "binTmp"
 )
 
@@ -46,6 +46,7 @@ func checkFile(file string) bool {
 }
 
 func rename(oldpath, newpath string) error {
+	// try project vendor
 	finfo, err := os.Stat(oldpath)
 	if !os.IsNotExist(err) {
 		if finfo.IsDir() {
@@ -80,15 +81,15 @@ func autobuild() {
 	defer func() {
 		err := rename(tmpVendorDir, vendorDir)
 		if err != nil {
-			log.Println("[ERROR] rename:", err)
+			log.Println("[ERROR] rename err:", err)
 		}
 		lock.Unlock()
 	}()
 
-	if noVendor {
+	if noVendor != "" {
 		err := rename(vendorDir, tmpVendorDir)
 		if err != nil {
-			log.Println("[ERROR] rename:", err)
+			log.Println("[ERROR] rename err:", err)
 		}
 	}
 
@@ -176,7 +177,7 @@ func main() {
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDir, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
-	flag.BoolVar(&noVendor, "novendor", false, "编译是是否忽略vendor目录")
+	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
 	flag.Parse()
 
 	if printHelp {
@@ -189,8 +190,18 @@ func main() {
 		log.Fatalf("[FATAL] %v", err)
 	}
 
-	vendorDir = filepath.Join(watchPath, "vendor")
-	tmpVendorDir = filepath.Join(watchPath, "_vendor")
+	if noVendor != "" {
+		vendorDir, err = filepath.Abs(filepath.Clean(noVendor))
+		if err != nil {
+			log.Fatalf("[FATAL] %v", err)
+		}
+
+		if base := filepath.Base(vendorDir); base != "vendor" {
+			log.Fatalf("[FATAL] %s is not vendor dir", base)
+		}
+		dir := filepath.Dir(vendorDir)
+		tmpVendorDir = filepath.Join(dir, "_vendor")
+	}
 
 	extArr := strings.Split(watchExtsArg, ",")
 
@@ -204,7 +215,12 @@ func main() {
 	}
 
 	go listenSignal(func() {
-		rename(tmpVendorDir, vendorDir)
+		if noVendor != "" {
+			err := rename(tmpVendorDir, vendorDir)
+			if err != nil {
+				log.Println("[ERROR] rename err:", err)
+			}
+		}
 	})
 
 	watcher, err := fsnotify.NewWatcher()
