@@ -87,20 +87,19 @@ func autobuild() {
 		lock.Unlock()
 	}()
 
-	if noVendor != "" {
-		err := rename(vendorDir, tmpVendorDir)
-		if err != nil {
-			log.Println("[ERROR] rename err:", err)
-		}
-	}
-
 	if time.Now().Sub(buildTime) > intervalTime {
+		var err error
 		buildTime = time.Now()
-		log.Println("[INFO] Start building...")
 		os.Chdir(watchPath)
 		cmdName := "go"
 
-		var err error
+		if noVendor != "" {
+			err := rename(vendorDir, tmpVendorDir)
+			if err != nil {
+				log.Println("[ERROR] rename err:", err)
+			}
+		}
+
 		binName := appName
 		if runtime.GOOS == "windows" {
 			binName += ".exe"
@@ -112,6 +111,7 @@ func autobuild() {
 		cmd.Env = append(os.Environ(), "GOGC=off")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		log.Println("[INFO] Start building...")
 		err = cmd.Run()
 
 		if err != nil {
