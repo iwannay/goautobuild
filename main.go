@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -19,7 +20,8 @@ import (
 var (
 	watchPathArg string
 	watchExtsArg string
-	ignoreDir    string
+	ignoreDirArg string
+	ignoreDirArr []string
 	noVendor     string
 	printHelp    bool
 	extMap       = make(map[string]bool, 0)
@@ -46,7 +48,6 @@ func checkFile(file string) bool {
 }
 
 func rename(oldpath, newpath string) error {
-	// try project vendor
 	finfo, err := os.Stat(oldpath)
 	if !os.IsNotExist(err) {
 		if finfo.IsDir() {
@@ -175,7 +176,7 @@ func main() {
 	var err error
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
-	flag.StringVar(&ignoreDir, "i", "", "忽略监听的目录")
+	flag.StringVar(&ignoreDirArg, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
 	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
 	flag.Parse()
@@ -183,6 +184,19 @@ func main() {
 	if printHelp {
 		flag.Usage()
 		return
+	}
+
+	if ignoreDirArg != "" {
+		ignoreDirArr = strings.Split(ignoreDirArg, ",")
+		for k, v := range ignoreDirArr {
+
+			ignoreDirArr[k], err = filepath.Abs(filepath.Clean(v))
+			if err != nil {
+				log.Fatalf("[FATAL] %v", err)
+			}
+			log.Println("[INFO] ignore:", ignoreDirArr[k])
+		}
+
 	}
 
 	watchPath, err = filepath.Abs(filepath.Clean(watchPathArg))
@@ -237,7 +251,9 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
+
 				log.Println("[INFO] event type:", event.Op, " filename:", event.Name)
+
 				if (event.Op == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
 					log.Println("[INFO] modified file:", event.Name)
 					go autobuild()
@@ -263,13 +279,19 @@ func main() {
 
 	log.Println("[INFO] watch", watchPath, " file ext", extArr)
 	err = watcher.Add(watchPath)
-
-	ignoreDir = filepath.Join(getCurrentDirectory(), ignoreDir)
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
 	}
 	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() && path != ignoreDir {
+
+		for _, v := range ignoreDirArr {
+			if v == path {
+				return errors.New("ignore " + path)
+			}
+		}
+
+		if info.IsDir() {
+
 			log.Printf("[TRAC] Directory( %s )\n", path)
 			err := watcher.Add(path)
 			if err != nil {
