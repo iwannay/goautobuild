@@ -252,23 +252,34 @@ func main() {
 			select {
 			case event := <-watcher.Events:
 
-				log.Println("[INFO] event type:", event.Op, " filename:", event.Name)
+				logIgnored := false
 
-				if (event.Op == fsnotify.Write) && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+				if !checkFile(event.Name) || filepath.Base(event.Name) == appName {
+					continue
+				}
+
+				if event.Op == fsnotify.Write {
+					logIgnored = true
 					log.Println("[INFO] modified file:", event.Name)
 					go autobuild()
 				}
 
-				if event.Op == fsnotify.Create && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+				if event.Op == fsnotify.Create {
+					logIgnored = true
 					log.Println("[INFO] add file:", event.Name)
 					watcher.Add(event.Name)
 					go autobuild()
 				}
 
-				if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename && checkFile(event.Name) && filepath.Base(event.Name) != appName {
+				if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
+					logIgnored = true
 					log.Println("[INFO] remove file:", event.Name)
 					watcher.Remove(event.Name)
 					go autobuild()
+				}
+
+				if logIgnored == false {
+					log.Println("[INFO] event type:", event.Op, " filename:", event.Name)
 				}
 
 			case err := <-watcher.Errors:
