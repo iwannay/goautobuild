@@ -23,6 +23,8 @@ var (
 	ignoreDirArg string
 	ignoreDirArr []string
 	noVendor     string
+	cmdArgs      string
+	cmdArgsArr   []string
 	printHelp    bool
 	extMap       = make(map[string]bool, 0)
 	watchPath    string
@@ -152,10 +154,9 @@ func kill() {
 }
 
 func start(binName string) {
-	log.Printf("[INFO] Restarting %s ...\n", binName)
-
+	log.Printf("[INFO] Restarting %s %s ...\n", binName, cmdArgs)
 	binName = "./" + binName
-	cmd = exec.Command(binName)
+	cmd = exec.Command(binName, cmdArgsArr...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), "")
@@ -174,17 +175,22 @@ func getCurrentDirectory() string {
 
 func main() {
 	var err error
+
 	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDirArg, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
 	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
+	flag.StringVar(&cmdArgs, "args", "", "自定义命令参数")
 	flag.Parse()
 
 	if printHelp {
+		fmt.Fprintf(flag.CommandLine.Output(), "version: %s\n", "0.5.0")
 		flag.Usage()
 		return
 	}
+
+	cmdArgsArr = strings.Split(cmdArgs, " ")
 
 	if ignoreDirArg != "" {
 		ignoreDirArr = strings.Split(ignoreDirArg, ",")
