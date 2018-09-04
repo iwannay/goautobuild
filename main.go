@@ -241,6 +241,7 @@ func main() {
 				log.Println("[ERROR] rename err:", err)
 			}
 		}
+		kill()
 	})
 
 	watcher, err := fsnotify.NewWatcher()
