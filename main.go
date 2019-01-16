@@ -23,6 +23,7 @@ var (
 	ignoreDirArg string
 	ignoreDirArr []string
 	noVendor     string
+	mod          string
 	cmdArgs      string
 	cmdArgsArr   []string
 	printHelp    bool
@@ -107,6 +108,11 @@ func autobuild() {
 			binName += ".exe"
 		}
 		args := []string{"build"}
+
+		if mod != "" {
+			args = append(args, "-mod", mod)
+		}
+
 		args = append(args, "-o", binName)
 
 		cmd := exec.Command(cmdName, args...)
@@ -182,6 +188,7 @@ func main() {
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
 	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
 	flag.StringVar(&cmdArgs, "args", "", "自定义命令参数")
+	flag.StringVar(&mod, "mod", "", "指定mod使用的vendor末路")
 	flag.Parse()
 
 	if printHelp {
