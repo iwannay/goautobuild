@@ -311,7 +311,7 @@ func main() {
 	}
 	for _, v := range watchDir {
 
-		log.Println("[INFO] watch", v, " file ext", extArr)
+		log.Println("[INFO] watch", v, ",file ext", extArr)
 		err = watcher.Add(v)
 		if err != nil {
 			log.Fatalf("[FATAL] watcher -> %v", err)
