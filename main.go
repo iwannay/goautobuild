@@ -183,7 +183,7 @@ func getCurrentDirectory() string {
 func main() {
 	var err error
 
-	flag.StringVar(&watchPathArg, "d", "./", "工作目录，默认当前目录.eg:/project,处在工作目录的文件会被自动监控变化")
+	flag.StringVar(&watchPathArg, "d", "./", "工作目录，默认当前目录.eg:/project，处在工作目录的文件会被自动监控变化")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDirArg, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
@@ -304,38 +304,39 @@ func main() {
 		}
 	}()
 
-	log.Println("[INFO] watch", watchPath, " file ext", extArr)
-	err = watcher.Add(watchPath)
-	if err != nil {
-		log.Fatalf("[FATAL] watcher -> %v", err)
-	}
+	var watchDir []string
+	watchDir = append(watchDir, watchPath)
 	if watchDirArg != "" {
-		for _, v := range strings.Split(watchDirArg, ",") {
-			log.Println("[INFO] watch", watchPath, " file ext", extArr)
-			err = watcher.Add(v)
-			if err != nil {
-				log.Fatalf("[FATAL] watcher -> %v", err)
-			}
-		}
+		watchDir = append(watchDir, strings.Split(watchDirArg, ",")...)
 	}
-	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
+	for _, v := range watchDir {
 
-		for _, v := range ignoreDirArr {
-			if v == path {
-				return errors.New("ignore " + path)
-			}
+		log.Println("[INFO] watch", v, " file ext", extArr)
+		err = watcher.Add(v)
+		if err != nil {
+			log.Fatalf("[FATAL] watcher -> %v", err)
 		}
 
-		if info.IsDir() {
+		filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 
-			log.Printf("[TRAC] Directory( %s )\n", path)
-			err := watcher.Add(path)
-			if err != nil {
-				log.Fatalf("[ERROR] Fail to watch directory[ %s ]\n", err)
+			for _, v := range ignoreDirArr {
+				if v == path {
+					return errors.New("ignore " + path)
+				}
 			}
-		}
-		return err
-	})
+
+			if info.IsDir() {
+				log.Printf("[TRAC] Directory( %s )\n", path)
+				err := watcher.Add(path)
+				if err != nil {
+					log.Fatalf("[ERROR] Fail to watch directory[ %s ]\n", err)
+				}
+			}
+			return err
+		})
+
+	}
+
 	autobuild()
 	<-done
 }
