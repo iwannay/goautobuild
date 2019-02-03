@@ -22,6 +22,7 @@ var (
 	watchExtsArg string
 	ignoreDirArg string
 	ignoreDirArr []string
+	watchDirArg  string
 	noVendor     string
 	mod          string
 	cmdArgs      string
@@ -182,13 +183,14 @@ func getCurrentDirectory() string {
 func main() {
 	var err error
 
-	flag.StringVar(&watchPathArg, "d", "./", "监听的目录，默认当前目录.eg:/project")
+	flag.StringVar(&watchPathArg, "d", "./", "工作目录，默认当前目录.eg:/project,处在工作目录的文件会被自动监控变化")
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDirArg, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
 	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
 	flag.StringVar(&cmdArgs, "args", "", "自定义命令参数")
 	flag.StringVar(&mod, "mod", "", "指定mod使用的vendor末路")
+	flag.StringVar(&watchDirArg, "w", "", "监听的目录")
 	flag.Parse()
 
 	if printHelp {
@@ -306,6 +308,15 @@ func main() {
 	err = watcher.Add(watchPath)
 	if err != nil {
 		log.Fatalf("[FATAL] watcher -> %v", err)
+	}
+	if watchDirArg != "" {
+		for _, v := range strings.Split(watchDirArg, ",") {
+			log.Println("[INFO] watch", watchPath, " file ext", extArr)
+			err = watcher.Add(v)
+			if err != nil {
+				log.Fatalf("[FATAL] watcher -> %v", err)
+			}
+		}
 	}
 	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
 
