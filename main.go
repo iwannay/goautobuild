@@ -23,7 +23,6 @@ var (
 	ignoreDirArg string
 	ignoreDirArr []string
 	watchDirArg  string
-	noVendor     string
 	mod          string
 	cmdArgs      string
 	cmdArgsArr   []string
@@ -33,8 +32,6 @@ var (
 	buildTime    time.Time
 	cmd          *exec.Cmd
 	lock         sync.Mutex
-	vendorDir    string
-	tmpVendorDir string
 )
 
 const (
@@ -83,26 +80,13 @@ func listenSignal(fn func()) {
 
 func autobuild() {
 	lock.Lock()
-	defer func() {
-		err := rename(tmpVendorDir, vendorDir)
-		if err != nil {
-			log.Println("[ERROR] rename err:", err)
-		}
-		lock.Unlock()
-	}()
+	defer lock.Unlock()
 
 	if time.Now().Sub(buildTime) > intervalTime {
 		var err error
 		buildTime = time.Now()
 		os.Chdir(watchPath)
 		cmdName := "go"
-
-		if noVendor != "" {
-			err := rename(vendorDir, tmpVendorDir)
-			if err != nil {
-				log.Println("[ERROR] rename err:", err)
-			}
-		}
 
 		binName := appName
 		if runtime.GOOS == "windows" {
@@ -187,9 +171,8 @@ func main() {
 	flag.StringVar(&watchExtsArg, "e", "", "监听的文件类型，默认监听所有文件类型.eg：'.go','.html','.php'")
 	flag.StringVar(&ignoreDirArg, "i", "", "忽略监听的目录")
 	flag.BoolVar(&printHelp, "help", false, "显示帮助信息")
-	flag.StringVar(&noVendor, "novendor", "", "编译时忽略指定的vendor目录")
 	flag.StringVar(&cmdArgs, "args", "", "自定义命令参数")
-	flag.StringVar(&mod, "mod", "", "指定mod使用的vendor末路")
+	flag.StringVar(&mod, "mod", "", "指定mod使用的vendor")
 	flag.StringVar(&watchDirArg, "w", "", "监听的目录")
 	flag.Parse()
 
@@ -219,19 +202,6 @@ func main() {
 		log.Fatalf("[FATAL] %v", err)
 	}
 
-	if noVendor != "" {
-		vendorDir, err = filepath.Abs(filepath.Clean(noVendor))
-		if err != nil {
-			log.Fatalf("[FATAL] %v", err)
-		}
-
-		if base := filepath.Base(vendorDir); base != "vendor" {
-			log.Fatalf("[FATAL] %s is not vendor dir", base)
-		}
-		dir := filepath.Dir(vendorDir)
-		tmpVendorDir = filepath.Join(dir, "_vendor")
-	}
-
 	extArr := strings.Split(watchExtsArg, ",")
 
 	if len(extArr) > 0 {
@@ -244,12 +214,6 @@ func main() {
 	}
 
 	go listenSignal(func() {
-		if noVendor != "" {
-			err := rename(tmpVendorDir, vendorDir)
-			if err != nil {
-				log.Println("[ERROR] rename err:", err)
-			}
-		}
 		kill()
 	})
 
