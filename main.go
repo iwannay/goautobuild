@@ -164,6 +164,42 @@ func getCurrentDirectory() string {
 	return strings.Replace(dir, "\\", "/", -1)
 }
 
+func addWatch(root string, watcher *fsnotify.Watcher) {
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		for _, v := range ignoreDirArr {
+			if v == path {
+				return errors.New("ignore " + path)
+			}
+		}
+
+		if err != nil {
+			log.Printf("[ERROR] %s", err)
+		}
+
+		if info.IsDir() {
+			log.Printf("[TRAC] Directory( %s )\n", path)
+		}
+
+		if err := watcher.Add(path); err != nil {
+			log.Fatalf("[ERROR] Failed to watch directory[ %s ]\n", err)
+		}
+		return err
+	})
+}
+
+func removeWatch(root string, watcher *fsnotify.Watcher) {
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			log.Printf("[TRAC] Directory( %s )\n", path)
+		}
+
+		if err := watcher.Remove(path); err != nil {
+			log.Fatalf("[ERROR] Failed to remove watch [ %s ]\n", err)
+		}
+		return err
+	})
+}
+
 func main() {
 	var err error
 
@@ -219,7 +255,7 @@ func main() {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatalf("[FATAL] watcher ->", err)
+		log.Fatalf("[FATAL] watcher -> %s", err)
 	}
 
 	defer watcher.Close()
@@ -232,34 +268,25 @@ func main() {
 			select {
 			case event := <-watcher.Events:
 
-				logIgnored := false
-
 				if !checkFile(event.Name) || filepath.Base(event.Name) == appName {
 					continue
 				}
 
 				if event.Op == fsnotify.Write {
-					logIgnored = true
-					log.Println("[INFO] modified file:", event.Name)
+					log.Println("[INFO] Write: ", event.Name)
 					go autobuild()
 				}
 
 				if event.Op == fsnotify.Create {
-					logIgnored = true
-					log.Println("[INFO] add file:", event.Name)
-					watcher.Add(event.Name)
+					log.Println("[INFO] Create: ", event.Name)
+					addWatch(event.Name, watcher)
 					go autobuild()
 				}
 
 				if event.Op == fsnotify.Remove || event.Op == fsnotify.Rename {
-					logIgnored = true
-					log.Println("[INFO] remove file:", event.Name)
-					watcher.Remove(event.Name)
+					log.Println("[INFO] Remove: ", event.Name)
+					removeWatch(event.Name, watcher)
 					go autobuild()
-				}
-
-				if logIgnored == false {
-					log.Println("[INFO] event type:", event.Op, " filename:", event.Name)
 				}
 
 			case err := <-watcher.Errors:
@@ -274,31 +301,12 @@ func main() {
 		watchDir = append(watchDir, strings.Split(watchDirArg, ",")...)
 	}
 	for _, v := range watchDir {
-
 		log.Println("[INFO] watch", v, ",file ext", extArr)
 		err = watcher.Add(v)
 		if err != nil {
 			log.Fatalf("[FATAL] watcher -> %v", err)
 		}
-
-		filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-
-			for _, v := range ignoreDirArr {
-				if v == path {
-					return errors.New("ignore " + path)
-				}
-			}
-
-			if info.IsDir() {
-				log.Printf("[TRAC] Directory( %s )\n", path)
-				err := watcher.Add(path)
-				if err != nil {
-					log.Fatalf("[ERROR] Fail to watch directory[ %s ]\n", err)
-				}
-			}
-			return err
-		})
-
+		addWatch(v, watcher)
 	}
 
 	autobuild()
