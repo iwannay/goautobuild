@@ -189,8 +189,15 @@ func addWatch(root string, watcher *fsnotify.Watcher) {
 
 func removeWatch(root string, watcher *fsnotify.Watcher) {
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			log.Printf("[TRAC] Directory( %s )\n", path)
+
+		if err != nil {
+			return err
+		}
+
+		if info != nil {
+			if info.IsDir() {
+				log.Printf("[TRAC] Directory( %s )\n", path)
+			}
 		}
 
 		if err := watcher.Remove(path); err != nil {
