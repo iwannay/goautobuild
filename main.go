@@ -305,7 +305,17 @@ func main() {
 	var watchDir []string
 	watchDir = append(watchDir, watchPath)
 	if watchDirArg != "" {
-		watchDir = append(watchDir, strings.Split(watchDirArg, ",")...)
+		elems := strings.Split(watchDirArg, ",")
+		for _, v := range elems {
+			if v == "" {
+				continue
+			}
+			wp, err := filepath.Abs(filepath.Clean(v))
+			if err != nil {
+				log.Fatalf("[FATAL] %v", err)
+			}
+			watchDir = append(watchDir, wp)
+		}
 	}
 	for _, v := range watchDir {
 		log.Println("[INFO] watch", v, ",file ext", extArr)
